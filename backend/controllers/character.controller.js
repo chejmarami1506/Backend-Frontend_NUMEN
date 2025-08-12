@@ -90,13 +90,24 @@ const deleteCharacter = async (req, res) => {
 const syncDbzCharacters = async (req, res) => {
     try {
         const apiCharacters = await getCharactersFromApi();
-        const result = await Character.insertMany(apiCharacters, { ordered: false });
-        res.status(201).json({ message: `Se insertaron ${result.length} personajes`, data: result });
+        const ops = apiCharacters.map(char => ({
+        updateOne: {
+            filter: { id: char.id },
+            update: char,
+            upsert: true
+        }
+        }));
+
+        const result = await Character.bulkWrite(ops);
+
+        res.status(201).json({
+        message: `Sincronización completa. Insertados: ${result.upsertedCount}, Actualizados: ${result.modifiedCount}`,
+        data: result
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error al sincronizar personajes', error: error.message });
     }
 };
-
 module.exports = {
     getCharacters,
     getCharacterById,
